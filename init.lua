@@ -1,4 +1,4 @@
---[[
+--[[ini
 
 =====================================================================
 ==================== READ THIS BEFORE CONTINUING ====================
@@ -68,14 +68,21 @@ vim.opt.rtp:prepend(lazypath)
 --  You can also configure plugins after the setup call,
 --    as they will be available in your neovim runtime.
 require('lazy').setup({
-  -- NOTE: First, some plugins that don't require any configuration
 
+  -- NOTE: First, some plugins that don't require any configuration
+  {
+    "Pocco81/true-zen.nvim",
+    config = function()
+      require("true-zen").setup {}
+    end,
+    ft = "markdown",
+  },
   -- Git related plugins
   'tpope/vim-fugitive',
   'tpope/vim-rhubarb',
   -- Detect tabstop and shiftwidth automatically
   'tpope/vim-sleuth',
-
+  'onsails/lspkind.nvim',
   -- NOTE: This is where your plugins related to LSP can be installed.
   --  The configuration is done below. Search for lspconfig to find it below.
   {
@@ -110,6 +117,16 @@ require('lazy').setup({
       -- or leave it empty to use the default settings
       -- refer to the configuration section below
     },
+  },
+  {
+    "nvim-neo-tree/neo-tree.nvim",
+    branch = "v3.x",
+    dependencies = {
+      "nvim-lua/plenary.nvim",
+      "nvim-tree/nvim-web-devicons", -- not strictly required, but recommended
+      "MunifTanjim/nui.nvim",
+      -- "3rd/image.nvim", -- Optional image support in preview window: See `# Preview Mode` for more information
+    }
   },
   {
     'windwp/nvim-autopairs',
@@ -217,7 +234,7 @@ require('lazy').setup({
     priority = 1000,
     opts = {},
     config = function()
-      vim.cmd.colorscheme 'tokyonight'
+      vim.cmd.colorscheme 'tokyonight-night'
     end,
   },
 
@@ -227,10 +244,10 @@ require('lazy').setup({
     -- See `:help lualine.txt`
     opts = {
       options = {
-        icons_enabled = false,
-        theme = 'onedark',
-        component_separators = '|',
-        section_separators = '',
+        icons_enabled = true,
+        theme = 'auto',
+        component_separators = { left = '', right = '' },
+        section_separators = { left = '', right = '' },
       },
     },
   },
@@ -243,7 +260,13 @@ require('lazy').setup({
     main = 'ibl',
     opts = {},
   },
-
+  -- Prettier stuff
+  {
+    'jose-elias-alvarez/null-ls.nvim',
+  },
+  {
+    'MunifTanjim/prettier.nvim'
+  },
   -- "gc" to comment visual regions/lines
   { 'numToStr/Comment.nvim', opts = {} },
 
@@ -296,7 +319,7 @@ require('nvim-autopairs').remove_rule("'")
 -- [[ Setting options ]]
 -- See `:help vim.o`
 -- NOTE: You can change these options as you wish!
-
+vim.diagnostic.config({ severity_sort = true })
 -- Set highlight on search
 vim.o.hlsearch = false
 vim.o.relativenumber = true
@@ -346,8 +369,9 @@ vim.keymap.set('n', 'j', "v:count == 0 ? 'gj' : 'j'", { expr = true, silent = tr
 -- Diagnostic keymaps
 vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, { desc = 'Go to previous diagnostic message' })
 vim.keymap.set('n', ']d', vim.diagnostic.goto_next, { desc = 'Go to next diagnostic message' })
-vim.keymap.set('n', '<leader>e', vim.diagnostic.open_float, { desc = 'Open floating diagnostic message' })
+-- vim.keymap.set('n', '<leader>e', vim.diagnostic.open_float, { desc = 'Open floating diagnostic message' })
 vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostics list' })
+vim.keymap.set('n', '<leader>e', function() vim.cmd("Neotree toggle") end, { desc = 'Open neotree' })
 
 -- [[ Highlight on yank ]]
 -- See `:help vim.highlight.on_yank()`
@@ -439,17 +463,23 @@ vim.keymap.set('n', '<leader>sg', require('telescope.builtin').live_grep, { desc
 vim.keymap.set('n', '<leader>sG', ':LiveGrepGitRoot<cr>', { desc = '[S]earch by [G]rep on Git Root' })
 vim.keymap.set('n', '<leader>sd', require('telescope.builtin').diagnostics, { desc = '[S]earch [D]iagnostics' })
 vim.keymap.set('n', '<leader>sr', require('telescope.builtin').resume, { desc = '[S]earch [R]esume' })
-
-
+vim.keymap.set('n', '<C-s>', function() vim.cmd("w") end, { desc = "Save document" })
+vim.api.nvim_create_autocmd({ "BufNewFile", "BufRead" }, {
+  pattern = "*.wgsl",
+  callback = function()
+    vim.bo.filetype = "wgsl"
+  end,
+})
 -- Add keymap for lazygit
 vim.keymap.set('n', '<leader>gl', function() vim.cmd("LazyGit") end, { desc = '[L]azy [G]it' })
 -- [[ Configure Treesitter ]]
 -- See `:help nvim-treesitter`
 -- Defer Treesitter setup after first render to improve startup time of 'nvim {filename}'
+vim.filetype.add({ extension = { wgsl = 'wgsl' } })
 vim.defer_fn(function()
   require('nvim-treesitter.configs').setup {
     -- Add languages to be installed here that you want installed for treesitter
-    ensure_installed = { 'c', 'cpp', 'go', 'lua', 'python', 'rust', 'tsx', 'javascript', 'typescript', 'vimdoc', 'vim', 'bash' },
+    ensure_installed = { 'c', 'cpp', 'go', 'lua', 'python', 'rust', 'tsx', 'javascript', 'typescript', 'vimdoc', 'vim', 'bash', 'wgsl' },
 
     -- Autoinstall languages that are not installed. Defaults to false (but you can change for yourself!)
     auto_install = false,
@@ -596,6 +626,11 @@ local servers = {
     ["rust-analyzer"] = {
       check = {
         command = "clippy"
+      },
+      cargo = {
+        extraEnv = {
+          DATABASE_URL = "sqlite:data.db"
+        }
       }
     }
 
@@ -645,7 +680,7 @@ local cmp = require 'cmp'
 local luasnip = require 'luasnip'
 require('luasnip.loaders.from_vscode').lazy_load()
 luasnip.config.setup {}
-
+local lspkind = require('lspkind')
 cmp.setup {
   snippet = {
     expand = function(args)
@@ -689,7 +724,60 @@ cmp.setup {
     { name = 'luasnip' },
     { name = 'path' },
   },
-}
+  formatting = {
+    format = lspkind.cmp_format(),
+  },
 
+}
+local null_ls = require("null-ls")
+
+local group = vim.api.nvim_create_augroup("lsp_format_on_save", { clear = false })
+local event = "BufWritePre" -- or "BufWritePost"
+local async = event == "BufWritePost"
+
+null_ls.setup({
+  on_attach = function(client, bufnr)
+    if client.supports_method("textDocument/formatting") then
+      vim.keymap.set("n", "<Leader>f", function()
+        vim.lsp.buf.format({ bufnr = vim.api.nvim_get_current_buf() })
+      end, { buffer = bufnr, desc = "[lsp] format" })
+
+      -- format on save
+      vim.api.nvim_clear_autocmds({ buffer = bufnr, group = group })
+      vim.api.nvim_create_autocmd(event, {
+        buffer = bufnr,
+        group = group,
+        callback = function()
+          vim.lsp.buf.format({ bufnr = bufnr, async = async })
+        end,
+        desc = "[lsp] format on save",
+      })
+    end
+
+    if client.supports_method("textDocument/rangeFormatting") then
+      vim.keymap.set("x", "<Leader>f", function()
+        vim.lsp.buf.format({ bufnr = vim.api.nvim_get_current_buf() })
+      end, { buffer = bufnr, desc = "[lsp] format" })
+    end
+  end,
+})
+local prettier = require("prettier").setup({
+  filetypes = {
+    "css",
+    "graphql",
+    "html",
+    "javascript",
+    "javascriptreact",
+    "json",
+    "less",
+    "markdown",
+    "scss",
+    "typescript",
+    "typescriptreact",
+    "yaml",
+    "tera",
+  }
+})
 -- The line beneath this is called `modeline`. See `:help modeline`
+
 -- vim: ts=2 sts=2 sw=2 et
